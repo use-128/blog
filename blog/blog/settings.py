@@ -122,3 +122,73 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/2.2/howto/static-files/
 
 STATIC_URL = '/static/'
+
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://127.0.0.1:6379/0",
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        }
+    },
+    "session": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://127.0.0.1:6379/1",
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        }
+    },
+}
+#session 数据库存储改成redis存储
+SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+SESSION_CACHE_ALIAS = "session"
+
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "filters": {"require_debug_false": {"()": "django.utils.log.RequireDebugTrue"}},
+    "formatters": { # 定义了两种日志格式
+        "verbose": { # 标准
+            "format": "%(levelname)s %(asctime)s %(module)s "
+            "%(process)d %(thread)d %(message)s"
+        },
+        'simple': { # 简单
+            'format': '[%(levelname)s][%(asctime)s][%(filename)s:%(lineno)d]%(message)s'
+        },
+    },
+    "handlers": { # 定义了三种日志处理方式
+        "mail_admins": { # 只有debug=False且Error级别以上发邮件给admin
+            "level": "ERROR",
+            "filters": ["require_debug_false"],
+            "class": "django.utils.log.AdminEmailHandler",
+        },
+        'file': { # Info级别以上保存到日志文件
+            'level': 'INFO',
+            'class': 'logging.handlers.RotatingFileHandler',  # 保存到文件，根据文件大小自动切
+            'filename': os.path.join(BASE_DIR,"logs/info.log"),  # 日志文件
+            'maxBytes': 1024 * 1024 * 100,  # 日志大小 10M
+            'backupCount': 2,  # 备份数为 2
+            'formatter': 'simple', # 简单格式
+            'encoding': 'utf-8',
+        },
+        "console": { # 打印到终端console
+            "level": "DEBUG",
+            "class": "logging.StreamHandler",
+            "formatter": "verbose",
+        },
+    },
+    "root": {"level": "INFO", "handlers": ["console"]},
+    "loggers": {
+        "django": { # Django的request发生error会自动记录
+            "handlers": ["mail_admins",'console','file'],
+            "level": "INFO",
+            "propagate": True,  # 向不向更高级别的logger传递
+        },
+        "django.security.DisallowedHost": { # 对于不在 ALLOWED_HOSTS 中的请求不发送报错邮件
+            "level": "ERROR",
+            "handlers": ["console", "mail_admins"],
+            "propagate": True,
+        },
+    },
+}
